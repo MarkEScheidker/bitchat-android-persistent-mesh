@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import com.bitchat.android.mesh.BluetoothMeshService
+import com.bitchat.android.ui.DataManager
 import com.bitchat.android.onboarding.BluetoothCheckScreen
 import com.bitchat.android.onboarding.BluetoothStatus
 import com.bitchat.android.onboarding.BluetoothStatusManager
@@ -67,8 +68,9 @@ class MainActivity : ComponentActivity() {
         
         // Initialize permission management
         permissionManager = PermissionManager(this)
-        // Initialize core mesh service first
-        meshService = BluetoothMeshService(this)
+        // Initialize core mesh service (reuse existing if already running)
+        meshService = BitchatApplication.meshServiceInstance ?: BluetoothMeshService(applicationContext)
+        BitchatApplication.meshServiceInstance = meshService
         bluetoothStatusManager = BluetoothStatusManager(
             activity = this,
             context = this,
@@ -694,13 +696,21 @@ class MainActivity : ComponentActivity() {
             Log.w("MainActivity", "Error cleaning up location status manager: ${e.message}")
         }
         
-        // Stop mesh services if app was fully initialized
+        // Stop mesh services if app was fully initialized and not in persistent mode
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
-            try {
-                meshService.stopServices()
-                Log.d("MainActivity", "Mesh services stopped successfully")
-            } catch (e: Exception) {
-                Log.w("MainActivity", "Error stopping mesh services in onDestroy: ${e.message}")
+            val persistentEnabled = DataManager(applicationContext).isPersistentModeEnabled()
+            if (!persistentEnabled) {
+                try {
+                    meshService.stopServices()
+                    Log.d("MainActivity", "Mesh services stopped successfully")
+                } catch (e: Exception) {
+                    Log.w("MainActivity", "Error stopping mesh services: ${e.message}")
+                }
+                BitchatApplication.meshServiceInstance = null
+            } else {
+                // Keep mesh running in background; hand off delegate to service
+                BitchatApplication.meshServiceInstance?.delegate = PersistentMeshService.instance
+                Log.d("MainActivity", "Persistent mode ON - mesh service will continue in background")
             }
         }
     }

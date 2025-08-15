@@ -1,11 +1,13 @@
 package com.bitchat.android.ui
 
 import android.app.Application
-import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
+import com.bitchat.android.BitchatApplication
+import com.bitchat.android.PersistentMeshService
 import com.bitchat.android.mesh.BluetoothMeshDelegate
 import com.bitchat.android.mesh.BluetoothMeshService
 import com.bitchat.android.model.BitchatMessage
@@ -91,10 +93,19 @@ class ChatViewModel(
     val peerNicknames: LiveData<Map<String, String>> = state.peerNicknames
     val peerRSSI: LiveData<Map<String, Int>> = state.peerRSSI
     val showAppInfo: LiveData<Boolean> = state.showAppInfo
-    
+
+    // LiveData to track user preferences for persistent mode
+    private val _persistentModeEnabled = androidx.lifecycle.MutableLiveData<Boolean>()
+    val persistentModeEnabled: LiveData<Boolean> get() = _persistentModeEnabled
+    private val _startOnBootEnabled = androidx.lifecycle.MutableLiveData<Boolean>()
+    val startOnBootEnabled: LiveData<Boolean> get() = _startOnBootEnabled
+
     init {
         // Note: Mesh service delegate is now set by MainActivity
         loadAndInitialize()
+        // Initialize persistent mode settings
+        _persistentModeEnabled.value = DataManager(getApplication()).isPersistentModeEnabled()
+        _startOnBootEnabled.value = DataManager(getApplication()).isStartOnBootEnabled()
     }
     
     private fun loadAndInitialize() {
@@ -143,6 +154,12 @@ class ChatViewModel(
                 messageManager.addMessage(welcomeMessage)
             }
         }
+
+        // Load any offline messages received while app was closed
+        BitchatApplication.offlineMessages.forEach { (peerId, messages) ->
+            messages.forEach { privateChatManager.handleIncomingPrivateMessage(it) }
+        }
+        BitchatApplication.offlineMessages.clear()
     }
     
     override fun onCleared() {
@@ -349,6 +366,28 @@ class ChatViewModel(
         // Clear notifications when user opens a chat
         notificationManager.clearNotificationsForSender(peerID)
     }
+
+    // MARK: - Persistent Mode Controls
+    fun setPersistentModeEnabled(enable: Boolean) {
+        val dataManager = DataManager(getApplication())
+        dataManager.setPersistentMode(enable)
+        _persistentModeEnabled.postValue(enable)
+        if (enable) {
+            val serviceIntent = Intent(getApplication(), PersistentMeshService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                getApplication<Application>().startForegroundService(serviceIntent)
+            } else {
+                getApplication<Application>().startService(serviceIntent)
+            }
+        } else {
+            getApplication<Application>().stopService(Intent(getApplication(), PersistentMeshService::class.java))
+        }
+    }
+
+    fun setStartOnBootEnabled(enable: Boolean) {
+        DataManager(getApplication()).setStartOnBoot(enable)
+        _startOnBootEnabled.postValue(enable)
+    }
     
     // MARK: - Command Autocomplete (delegated)
     
@@ -430,11 +469,21 @@ class ChatViewModel(
         val newNickname = "anon${Random.nextInt(1000, 9999)}"
         state.setNickname(newNickname)
         dataManager.saveNickname(newNickname)
-        
+
         Log.w(TAG, "🚨 PANIC MODE COMPLETED - All sensitive data cleared")
-        
-        // Note: Mesh service restart is now handled by MainActivity
-        // This method now only clears data, not mesh service lifecycle
+        // Stop background mesh service and clear any cached messages
+        try {
+            meshService.stopServices()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping mesh service during panic: ${e.message}")
+        }
+        try {
+            getApplication<Application>().stopService(Intent(getApplication(), PersistentMeshService::class.java))
+        } catch (e: Exception) {
+            Log.w(TAG, "PersistentMeshService stop during panic failed: ${e.message}")
+        }
+        BitchatApplication.offlineMessages.clear()
+        BitchatApplication.meshServiceInstance = null
     }
     
     /**

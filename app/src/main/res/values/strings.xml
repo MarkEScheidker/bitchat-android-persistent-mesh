@@ -13,6 +13,8 @@
     <string name="show_commands">Show commands</string>
     <string name="back">Back</string>
     <string name="people">People</string>
+    <string name="persistent_network">Persistent Background Mesh</string>
+    <string name="start_on_boot">Start on Boot</string>
     <string name="channels">Channels</string>
     <string name="online_users">Online Users</string>
     <string name="no_one_connected">No one connected</string>

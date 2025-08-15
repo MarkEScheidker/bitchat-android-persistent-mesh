@@ -28,6 +28,23 @@ class DataManager(private val context: Context) {
     val favoritePeers: Set<String> get() = _favoritePeers
     val blockedUsers: Set<String> get() = _blockedUsers
     val channelMembers: Map<String, MutableSet<String>> get() = _channelMembers
+
+    // MARK: - Persistent Mode Preferences
+    fun isPersistentModeEnabled(): Boolean {
+        return prefs.getBoolean("persistent_mode", false)
+    }
+
+    fun setPersistentMode(enabled: Boolean) {
+        prefs.edit().putBoolean("persistent_mode", enabled).apply()
+    }
+
+    fun isStartOnBootEnabled(): Boolean {
+        return prefs.getBoolean("start_on_boot", false)
+    }
+
+    fun setStartOnBoot(enabled: Boolean) {
+        prefs.edit().putBoolean("start_on_boot", enabled).apply()
+    }
     
     // MARK: - Nickname Management
     
