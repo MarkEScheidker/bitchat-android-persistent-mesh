@@ -276,7 +276,7 @@ fun PeopleSection(
             val privateChats by viewModel.privateChats.observeAsState(emptyMap())
             val favoritePeers by viewModel.favoritePeers.observeAsState(emptySet())
             val peerFingerprints by viewModel.peerFingerprints.observeAsState(emptyMap())
-            
+
             // Reactive favorite computation for all peers
             val peerFavoriteStates = remember(favoritePeers, peerFingerprints, connectedPeers) {
                 connectedPeers.associateWith { peerID ->
@@ -285,9 +285,9 @@ fun PeopleSection(
                     fingerprint != null && favoritePeers.contains(fingerprint)
                 }
             }
-            
+
             Log.d("SidebarComponents", "Recomposing with ${favoritePeers.size} favorites, peer states: $peerFavoriteStates")
- 
+
             // Smart sorting: unread DMs first, then by most recent DM, then favorites, then alphabetical
             val sortedPeers = connectedPeers.sortedWith(
                 compareBy<String> { !hasUnreadPrivateMessages.contains(it) } // Unread DM senders first
@@ -295,10 +295,10 @@ fun PeopleSection(
                 .thenBy { !(peerFavoriteStates[it] ?: false) } // Favorites first
                 .thenBy { (if (it == nickname) "You" else (peerNicknames[it] ?: it)).lowercase() } // Alphabetical
             )
-            
+
             sortedPeers.forEach { peerID ->
                 val isFavorite = peerFavoriteStates[peerID] ?: false
-                
+
                 PeerItem(
                     peerID = peerID,
                     displayName = if (peerID == nickname) "You" else (peerNicknames[peerID] ?: peerID),
@@ -308,16 +308,58 @@ fun PeopleSection(
                     hasUnreadDM = hasUnreadPrivateMessages.contains(peerID),
                     colorScheme = colorScheme,
                     onItemClick = { onPrivateChatStart(peerID) },
-                    onToggleFavorite = { 
+                    onToggleFavorite = {
                         Log.d("SidebarComponents", "Sidebar toggle favorite: peerID=$peerID, currentFavorite=$isFavorite")
-                        viewModel.toggleFavorite(peerID) 
+                        viewModel.toggleFavorite(peerID)
                     },
-                    unreadCount = privateChats[peerID]?.count { msg -> 
+                    unreadCount = privateChats[peerID]?.count { msg ->
                         // Count unread messages from this peer (messages not from the current user)
                         msg.sender != nickname && hasUnreadPrivateMessages.contains(peerID)
                     } ?: if (hasUnreadPrivateMessages.contains(peerID)) 1 else 0
                 )
             }
+        }
+
+        // Push toggle controls to bottom
+        Spacer(modifier = Modifier.weight(1f))
+        // Persistent Network toggle
+        val persistentEnabled by viewModel.persistentModeEnabled.observeAsState(false)
+        val startBootEnabled by viewModel.startOnBootEnabled.observeAsState(false)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.persistent_network),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = persistentEnabled,
+                onCheckedChange = { viewModel.setPersistentModeEnabled(it) }
+            )
+        }
+        // Start on Boot toggle (enabled only if persistent mode is on)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.start_on_boot),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (persistentEnabled) colorScheme.onSurface else colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Switch(
+                checked = startBootEnabled,
+                onCheckedChange = { viewModel.setStartOnBootEnabled(it) },
+                enabled = persistentEnabled
+            )
         }
     }
 }

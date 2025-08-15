@@ -21,6 +21,8 @@
     
     <!-- Battery optimization permission -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Boot completed permission for auto-start -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     
     <!-- Hardware features -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
@@ -50,5 +52,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Receiver to handle device boot (starts persistent mesh if enabled) -->
+        <receiver android:name=".BootReceiver"
+                  android:enabled="true"
+                  android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <!-- Foreground service to keep mesh network active in background -->
+        <service android:name=".PersistentMeshService"
+                 android:exported="false"
+                 android:stopWithTask="false"
+                 android:foregroundServiceType="location|connectedDevice" />
     </application>
 </manifest>

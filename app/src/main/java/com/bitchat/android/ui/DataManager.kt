@@ -45,7 +45,24 @@ class DataManager(private val context: Context) {
     fun saveNickname(nickname: String) {
         prefs.edit().putString("nickname", nickname).apply()
     }
-    
+
+    // MARK: - Persistent Mode Preferences
+    fun isPersistentModeEnabled(): Boolean {
+        return prefs.getBoolean("persistent_mode", false)
+    }
+
+    fun setPersistentMode(enabled: Boolean) {
+        prefs.edit().putBoolean("persistent_mode", enabled).apply()
+    }
+
+    fun isStartOnBootEnabled(): Boolean {
+        return prefs.getBoolean("start_on_boot", false)
+    }
+
+    fun setStartOnBoot(enabled: Boolean) {
+        prefs.edit().putBoolean("start_on_boot", enabled).apply()
+    }
+
     // MARK: - Channel Data Management
     
     fun loadChannelData(): Pair<Set<String>, Set<String>> {
