@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.bitchat.android.ui.DataManager
 
@@ -33,24 +34,18 @@ class BootReceiver : BroadcastReceiver() {
                     true
                 }
 
-                val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
-                } else {
-                    true
-                }
-
-                if (hasLocation && hasBackgroundLocation && hasNotifications) {
+                if (hasLocation && hasBackgroundLocation) {
+                    Log.d("BootReceiver", "Starting MeshForegroundService on boot")
                     val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
                         action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
                     }
                     try {
                         ContextCompat.startForegroundService(context, serviceIntent)
-                    } catch (_: Exception) {
-                        // ignore failures to start service at boot
+                    } catch (e: Exception) {
+                        Log.w("BootReceiver", "Failed to start service on boot", e)
                     }
+                } else {
+                    Log.d("BootReceiver", "Missing location permission; not starting service")
                 }
             }
         }
