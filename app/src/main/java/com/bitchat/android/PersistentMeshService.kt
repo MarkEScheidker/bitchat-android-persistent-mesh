@@ -107,6 +107,11 @@ class PersistentMeshService : Service(), BluetoothMeshDelegate {
         Log.d("PersistentMeshService", "Read receipt received for message ${receipt.originalMessageID}")
     }
 
+    override fun decryptChannelMessage(encryptedContent: ByteArray, channel: String): String? {
+        // Channel messages are ignored in background mode; return null so they remain encrypted
+        return null
+    }
+
     override fun getNickname(): String? {
         val prefs = getSharedPreferences("bitchat_prefs", Context.MODE_PRIVATE)
         return prefs.getString("nickname", null) ?: "anon"
