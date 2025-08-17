@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.bitchat.android.ui.DataManager
 
@@ -22,7 +23,16 @@ class BootReceiver : BroadcastReceiver() {
                         Manifest.permission.ACCESS_COARSE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED
 
-                if (hasLocation) {
+                val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    true
+                }
+
+                if (hasLocation && hasNotifications) {
                     val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
                         action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
                     }

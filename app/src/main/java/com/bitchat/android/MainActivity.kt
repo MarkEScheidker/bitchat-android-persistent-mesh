@@ -22,6 +22,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import com.bitchat.android.mesh.BluetoothMeshService
 import com.bitchat.android.MeshForegroundService
+import com.bitchat.android.ui.DataManager
 import com.bitchat.android.onboarding.BluetoothCheckScreen
 import com.bitchat.android.onboarding.BluetoothStatus
 import com.bitchat.android.onboarding.BluetoothStatusManager
@@ -95,10 +96,14 @@ class MainActivity : ComponentActivity() {
             onOnboardingFailed = ::handleOnboardingFailed
         )
 
-        val skipOnboarding = chatViewModel.isPersistentNetworkEnabled() && meshService.isRunning()
+        val dm = DataManager(applicationContext)
+        val skipOnboarding = dm.isPersistentNetworkEnabled() && meshService.isRunning()
         if (skipOnboarding) {
             meshService.delegate = chatViewModel
             mainViewModel.updateOnboardingState(OnboardingState.COMPLETE)
+            startService(Intent(this, MeshForegroundService::class.java).apply {
+                action = MeshForegroundService.ACTION_START
+            })
         }
 
         setContent {

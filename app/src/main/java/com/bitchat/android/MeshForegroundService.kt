@@ -62,7 +62,16 @@ class MeshForegroundService : Service() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
-        if (!hasLocation) {
+        val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        if (!hasLocation || !hasNotifications) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -75,19 +84,14 @@ class MeshForegroundService : Service() {
             return START_NOT_STICKY
         }
 
-        when (intent?.action) {
-            ACTION_START -> {
-                if (!meshService.isRunning()) {
-                    meshService.startServices()
-                }
-            }
-            ACTION_USE_BACKGROUND_DELEGATE -> {
-                meshService.delegate = backgroundDelegate
-                if (!meshService.isRunning()) {
-                    meshService.startServices()
-                }
-            }
+        if (intent?.action == ACTION_USE_BACKGROUND_DELEGATE) {
+            meshService.delegate = backgroundDelegate
         }
+
+        if (!meshService.isRunning()) {
+            meshService.startServices()
+        }
+
         return START_STICKY
     }
 
