@@ -1,0 +1,20 @@
+package com.bitchat.android
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import com.bitchat.android.ui.DataManager
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent?) {
+        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
+            val dm = DataManager(context.applicationContext)
+            if (dm.isPersistentNetworkEnabled() && dm.isStartOnBootEnabled()) {
+                val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
+                    action = MeshForegroundService.ACTION_START
+                }
+                context.startForegroundService(serviceIntent)
+            }
+        }
+    }
+}

@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import com.bitchat.android.mesh.BluetoothMeshService
+import com.bitchat.android.MeshForegroundService
 import com.bitchat.android.onboarding.BluetoothCheckScreen
 import com.bitchat.android.onboarding.BluetoothStatus
 import com.bitchat.android.onboarding.BluetoothStatusManager
@@ -67,8 +68,8 @@ class MainActivity : ComponentActivity() {
         
         // Initialize permission management
         permissionManager = PermissionManager(this)
-        // Initialize core mesh service first
-        meshService = BluetoothMeshService(this)
+        // Obtain single mesh service instance from application
+        meshService = (application as BitchatApplication).meshService
         bluetoothStatusManager = BluetoothStatusManager(
             activity = this,
             context = this,
@@ -93,6 +94,10 @@ class MainActivity : ComponentActivity() {
             onOnboardingComplete = ::handleOnboardingComplete,
             onOnboardingFailed = ::handleOnboardingFailed
         )
+
+        if (chatViewModel.isPersistentNetworkEnabled() && meshService.isRunning()) {
+            meshService.delegate = chatViewModel
+        }
         
         setContent {
             BitchatTheme {
@@ -694,13 +699,19 @@ class MainActivity : ComponentActivity() {
             Log.w("MainActivity", "Error cleaning up location status manager: ${e.message}")
         }
         
-        // Stop mesh services if app was fully initialized
+        // Stop mesh only if background persistence disabled
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
             try {
-                meshService.stopServices()
-                Log.d("MainActivity", "Mesh services stopped successfully")
+                if (chatViewModel.isPersistentNetworkEnabled()) {
+                    startService(Intent(this, MeshForegroundService::class.java).apply {
+                        action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
+                    })
+                } else {
+                    meshService.stopServices()
+                    Log.d("MainActivity", "Mesh services stopped successfully")
+                }
             } catch (e: Exception) {
-                Log.w("MainActivity", "Error stopping mesh services in onDestroy: ${e.message}")
+                Log.w("MainActivity", "Error handling mesh services in onDestroy: ${e.message}")
             }
         }
     }
