@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.bitchat.android.model.BitchatMessage
 import kotlin.random.Random
 
 /**
@@ -44,6 +46,46 @@ class DataManager(private val context: Context) {
     
     fun saveNickname(nickname: String) {
         prefs.edit().putString("nickname", nickname).apply()
+    }
+
+    // MARK: - Background Preferences
+
+    fun isPersistentNetworkEnabled(): Boolean = prefs.getBoolean("persistent_network", false)
+
+    fun setPersistentNetworkEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("persistent_network", enabled).apply()
+        if (!enabled) {
+            setStartOnBootEnabled(false)
+        }
+    }
+
+    fun isStartOnBootEnabled(): Boolean = prefs.getBoolean("start_on_boot", false)
+
+    fun setStartOnBootEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("start_on_boot", enabled).apply()
+    }
+
+    // MARK: - Pending Private Messages
+
+    fun savePendingPrivateMessage(message: BitchatMessage) {
+        val messages = loadPendingPrivateMessages().toMutableList()
+        messages.add(message)
+        val json = gson.toJson(messages)
+        prefs.edit().putString("pending_private_messages", json).apply()
+    }
+
+    fun loadPendingPrivateMessages(): List<BitchatMessage> {
+        val json = prefs.getString("pending_private_messages", null) ?: return emptyList()
+        return try {
+            val type = object : TypeToken<List<BitchatMessage>>() {}.type
+            gson.fromJson<List<BitchatMessage>>(json, type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun clearPendingPrivateMessages() {
+        prefs.edit().remove("pending_private_messages").apply()
     }
     
     // MARK: - Channel Data Management

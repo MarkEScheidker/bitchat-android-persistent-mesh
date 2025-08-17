@@ -21,6 +21,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import com.bitchat.android.mesh.BluetoothMeshService
+import com.bitchat.android.MeshForegroundService
 import com.bitchat.android.onboarding.BluetoothCheckScreen
 import com.bitchat.android.onboarding.BluetoothStatus
 import com.bitchat.android.onboarding.BluetoothStatusManager
@@ -67,8 +68,8 @@ class MainActivity : ComponentActivity() {
         
         // Initialize permission management
         permissionManager = PermissionManager(this)
-        // Initialize core mesh service first
-        meshService = BluetoothMeshService(this)
+        // Obtain single mesh service instance from application
+        meshService = (application as BitchatApplication).meshService
         bluetoothStatusManager = BluetoothStatusManager(
             activity = this,
             context = this,
@@ -93,7 +94,13 @@ class MainActivity : ComponentActivity() {
             onOnboardingComplete = ::handleOnboardingComplete,
             onOnboardingFailed = ::handleOnboardingFailed
         )
-        
+
+        val skipOnboarding = chatViewModel.isPersistentNetworkEnabled() && meshService.isRunning()
+        if (skipOnboarding) {
+            meshService.delegate = chatViewModel
+            mainViewModel.updateOnboardingState(OnboardingState.COMPLETE)
+        }
+
         setContent {
             BitchatTheme {
                 Surface(
@@ -115,8 +122,8 @@ class MainActivity : ComponentActivity() {
         }
         
         // Only start onboarding process if we're in the initial CHECKING state
-        // This prevents restarting onboarding on configuration changes
-        if (mainViewModel.onboardingState.value == OnboardingState.CHECKING) {
+        // and we haven't already attached to a running mesh service
+        if (!skipOnboarding && mainViewModel.onboardingState.value == OnboardingState.CHECKING) {
             checkOnboardingStatus()
         }
     }
@@ -593,7 +600,12 @@ class MainActivity : ComponentActivity() {
                 // Set up mesh service delegate and start services
                 meshService.delegate = chatViewModel
                 meshService.startServices()
-                
+
+                // If user enabled background persistence, ensure foreground service runs
+                if (chatViewModel.isPersistentNetworkEnabled()) {
+                    chatViewModel.setPersistentNetworkEnabled(true)
+                }
+
                 Log.d("MainActivity", "Mesh service started successfully")
                 
                 // Handle any notification intent
@@ -694,13 +706,19 @@ class MainActivity : ComponentActivity() {
             Log.w("MainActivity", "Error cleaning up location status manager: ${e.message}")
         }
         
-        // Stop mesh services if app was fully initialized
+        // Stop mesh only if background persistence disabled
         if (mainViewModel.onboardingState.value == OnboardingState.COMPLETE) {
             try {
-                meshService.stopServices()
-                Log.d("MainActivity", "Mesh services stopped successfully")
+                if (chatViewModel.isPersistentNetworkEnabled()) {
+                    startService(Intent(this, MeshForegroundService::class.java).apply {
+                        action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
+                    })
+                } else {
+                    meshService.stopServices()
+                    Log.d("MainActivity", "Mesh services stopped successfully")
+                }
             } catch (e: Exception) {
-                Log.w("MainActivity", "Error stopping mesh services in onDestroy: ${e.message}")
+                Log.w("MainActivity", "Error handling mesh services in onDestroy: ${e.message}")
             }
         }
     }

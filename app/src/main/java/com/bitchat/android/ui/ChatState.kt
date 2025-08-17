@@ -103,12 +103,18 @@ class ChatState {
 
     private val _peerRSSI = MutableLiveData<Map<String, Int>>(emptyMap())
     val peerRSSI: LiveData<Map<String, Int>> = _peerRSSI
-    
+
     // peerIDToPublicKeyFingerprint REMOVED - fingerprints now handled centrally in PeerManager
-    
+
     // Navigation state
     private val _showAppInfo = MutableLiveData<Boolean>(false)
     val showAppInfo: LiveData<Boolean> = _showAppInfo
+
+    // Background settings
+    private val _persistentNetworkEnabled = MutableLiveData(false)
+    val persistentNetworkEnabled: LiveData<Boolean> = _persistentNetworkEnabled
+    private val _startOnBootEnabled = MutableLiveData(false)
+    val startOnBootEnabled: LiveData<Boolean> = _startOnBootEnabled
     
     // Unread state computed properties
     val hasUnreadChannels: MediatorLiveData<Boolean> = MediatorLiveData<Boolean>()
@@ -148,6 +154,8 @@ class ChatState {
     fun getPeerSessionStatesValue() = _peerSessionStates.value ?: emptyMap()
     fun getPeerFingerprintsValue() = _peerFingerprints.value ?: emptyMap()
     fun getShowAppInfoValue() = _showAppInfo.value ?: false
+    fun getPersistentNetworkEnabledValue() = _persistentNetworkEnabled.value ?: false
+    fun getStartOnBootEnabledValue() = _startOnBootEnabled.value ?: false
     
     // Setters for state updates
     fun setMessages(messages: List<BitchatMessage>) {
@@ -255,9 +263,17 @@ class ChatState {
     fun setPeerRSSI(rssi: Map<String, Int>) {
         _peerRSSI.value = rssi
     }
-    
+
     fun setShowAppInfo(show: Boolean) {
         _showAppInfo.value = show
+    }
+
+    fun setPersistentNetworkEnabled(enabled: Boolean) {
+        _persistentNetworkEnabled.value = enabled
+    }
+
+    fun setStartOnBootEnabled(enabled: Boolean) {
+        _startOnBootEnabled.value = enabled
     }
 
 }

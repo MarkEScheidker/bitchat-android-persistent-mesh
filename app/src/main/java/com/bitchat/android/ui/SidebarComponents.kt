@@ -45,6 +45,8 @@ fun SidebarOverlay(
     val unreadChannelMessages by viewModel.unreadChannelMessages.observeAsState(emptyMap())
     val peerNicknames by viewModel.peerNicknames.observeAsState(emptyMap())
     val peerRSSI by viewModel.peerRSSI.observeAsState(emptyMap())
+    val persistentEnabled by viewModel.persistentNetworkEnabled.observeAsState(false)
+    val startOnBootEnabled by viewModel.startOnBootEnabled.observeAsState(false)
 
     Box(
         modifier = modifier
@@ -79,7 +81,7 @@ fun SidebarOverlay(
                 
                 // Scrollable content
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -123,6 +125,15 @@ fun SidebarOverlay(
                         )
                     }
                 }
+
+                HorizontalDivider()
+
+                PersistentSettingsSection(
+                    persistentEnabled = persistentEnabled,
+                    startOnBootEnabled = startOnBootEnabled,
+                    onPersistentChanged = { viewModel.setPersistentNetworkEnabled(it) },
+                    onStartOnBootChanged = { viewModel.setStartOnBootEnabled(it) }
+                )
             }
         }
     }
@@ -436,6 +447,39 @@ private fun UnreadBadge(
                     fontWeight = FontWeight.Bold
                 ),
                 color = Color.Black // Black text on yellow background
+            )
+        }
+    }
+}
+
+@Composable
+private fun PersistentSettingsSection(
+    persistentEnabled: Boolean,
+    startOnBootEnabled: Boolean,
+    onPersistentChanged: (Boolean) -> Unit,
+    onStartOnBootChanged: (Boolean) -> Unit
+) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(id = R.string.keep_network_active_background),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Switch(checked = persistentEnabled, onCheckedChange = onPersistentChanged)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(id = R.string.start_network_on_boot),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (persistentEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
+            Switch(
+                checked = startOnBootEnabled,
+                onCheckedChange = onStartOnBootChanged,
+                enabled = persistentEnabled
             )
         }
     }
