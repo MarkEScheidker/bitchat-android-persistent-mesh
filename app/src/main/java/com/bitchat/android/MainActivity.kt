@@ -600,7 +600,12 @@ class MainActivity : ComponentActivity() {
                 // Set up mesh service delegate and start services
                 meshService.delegate = chatViewModel
                 meshService.startServices()
-                
+
+                // If user enabled background persistence, ensure foreground service runs
+                if (chatViewModel.isPersistentNetworkEnabled()) {
+                    chatViewModel.setPersistentNetworkEnabled(true)
+                }
+
                 Log.d("MainActivity", "Mesh service started successfully")
                 
                 // Handle any notification intent

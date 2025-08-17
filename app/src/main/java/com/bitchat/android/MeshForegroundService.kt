@@ -51,7 +51,13 @@ class MeshForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START, ACTION_USE_BACKGROUND_DELEGATE -> {
+            ACTION_START -> {
+                if (!meshService.isRunning()) {
+                    meshService.startServices()
+                }
+                startForeground(NOTIFICATION_ID, createNotification())
+            }
+            ACTION_USE_BACKGROUND_DELEGATE -> {
                 meshService.delegate = backgroundDelegate
                 if (!meshService.isRunning()) {
                     meshService.startServices()

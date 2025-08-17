@@ -11,7 +11,7 @@ class BootReceiver : BroadcastReceiver() {
             val dm = DataManager(context.applicationContext)
             if (dm.isPersistentNetworkEnabled() && dm.isStartOnBootEnabled()) {
                 val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
-                    action = MeshForegroundService.ACTION_START
+                    action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
                 }
                 context.startForegroundService(serviceIntent)
             }
