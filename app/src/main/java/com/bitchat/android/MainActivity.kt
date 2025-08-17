@@ -95,10 +95,12 @@ class MainActivity : ComponentActivity() {
             onOnboardingFailed = ::handleOnboardingFailed
         )
 
-        if (chatViewModel.isPersistentNetworkEnabled() && meshService.isRunning()) {
+        val skipOnboarding = chatViewModel.isPersistentNetworkEnabled() && meshService.isRunning()
+        if (skipOnboarding) {
             meshService.delegate = chatViewModel
+            mainViewModel.updateOnboardingState(OnboardingState.COMPLETE)
         }
-        
+
         setContent {
             BitchatTheme {
                 Surface(
@@ -120,8 +122,8 @@ class MainActivity : ComponentActivity() {
         }
         
         // Only start onboarding process if we're in the initial CHECKING state
-        // This prevents restarting onboarding on configuration changes
-        if (mainViewModel.onboardingState.value == OnboardingState.CHECKING) {
+        // and we haven't already attached to a running mesh service
+        if (!skipOnboarding && mainViewModel.onboardingState.value == OnboardingState.CHECKING) {
             checkOnboardingStatus()
         }
     }
