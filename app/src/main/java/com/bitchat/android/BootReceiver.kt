@@ -16,14 +16,15 @@ class BootReceiver : BroadcastReceiver() {
             intent?.action == Intent.ACTION_USER_UNLOCKED) {
             val dm = DataManager(context.applicationContext)
             if (dm.isPersistentNetworkEnabled() && dm.isStartOnBootEnabled()) {
-                val hasLocation = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED ||
+                val hasLocation =
                     ContextCompat.checkSelfPermission(
                         context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
 
                 val hasBackgroundLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ContextCompat.checkSelfPermission(
@@ -34,18 +35,26 @@ class BootReceiver : BroadcastReceiver() {
                     true
                 }
 
-                if (hasLocation && hasBackgroundLocation) {
-                    Log.d("BootReceiver", "Starting MeshForegroundService on boot")
-                    val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
-                        action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
-                    }
-                    try {
-                        ContextCompat.startForegroundService(context, serviceIntent)
-                    } catch (e: Exception) {
-                        Log.w("BootReceiver", "Failed to start service on boot", e)
-                    }
-                } else {
+                if (!hasLocation) {
                     Log.d("BootReceiver", "Missing location permission; not starting service")
+                    return
+                }
+
+                if (!hasBackgroundLocation) {
+                    Log.w(
+                        "BootReceiver",
+                        "Missing background location permission; service may be limited"
+                    )
+                }
+
+                Log.d("BootReceiver", "Starting MeshForegroundService on boot")
+                val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
+                    action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
+                }
+                try {
+                    ContextCompat.startForegroundService(context, serviceIntent)
+                } catch (e: Exception) {
+                    Log.w("BootReceiver", "Failed to start service on boot", e)
                 }
             }
         }
