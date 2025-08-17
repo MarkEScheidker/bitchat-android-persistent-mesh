@@ -50,6 +50,7 @@ class MeshForegroundService : Service() {
         dataManager = DataManager(applicationContext)
         notificationManager = PMNotificationManager(applicationContext)
         notificationManager.setAppBackgroundState(true)
+        meshService.connectionManager.setAppBackgroundState(true)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
