@@ -2,6 +2,7 @@ package com.bitchat.android.ui
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.random.Random
+import com.bitchat.android.MeshForegroundService
 
 /**
  * Refactored ChatViewModel - Main coordinator for bitchat functionality
@@ -91,6 +93,8 @@ class ChatViewModel(
     val peerNicknames: LiveData<Map<String, String>> = state.peerNicknames
     val peerRSSI: LiveData<Map<String, Int>> = state.peerRSSI
     val showAppInfo: LiveData<Boolean> = state.showAppInfo
+    val persistentNetworkEnabled: LiveData<Boolean> = state.persistentNetworkEnabled
+    val startOnBootEnabled: LiveData<Boolean> = state.startOnBootEnabled
     
     init {
         // Note: Mesh service delegate is now set by MainActivity
@@ -120,6 +124,21 @@ class ChatViewModel(
         dataManager.loadFavorites()
         state.setFavoritePeers(dataManager.favoritePeers.toSet())
         dataManager.loadBlockedUsers()
+
+        // Load background preferences
+        state.setPersistentNetworkEnabled(dataManager.isPersistentNetworkEnabled())
+        state.setStartOnBootEnabled(dataManager.isStartOnBootEnabled())
+
+        // Load pending private messages
+        val pending = dataManager.loadPendingPrivateMessages()
+        pending.forEach { msg ->
+            msg.senderPeerID?.let { sender ->
+                messageManager.addPrivateMessage(sender, msg)
+            }
+        }
+        if (pending.isNotEmpty()) {
+            dataManager.clearPendingPrivateMessages()
+        }
         
         // Log all favorites at startup
         dataManager.logAllFavorites()
@@ -339,6 +358,33 @@ class ChatViewModel(
         // Forward to notification manager for notification logic
         notificationManager.setAppBackgroundState(inBackground)
     }
+
+    fun setPersistentNetworkEnabled(enabled: Boolean) {
+        state.setPersistentNetworkEnabled(enabled)
+        dataManager.setPersistentNetworkEnabled(enabled)
+        val context = getApplication<Application>()
+        if (enabled) {
+            if (!meshService.isRunning()) {
+                meshService.startServices()
+            }
+            val intent = Intent(context, MeshForegroundService::class.java).apply {
+                action = MeshForegroundService.ACTION_START
+            }
+            context.startForegroundService(intent)
+        } else {
+            context.stopService(Intent(context, MeshForegroundService::class.java))
+            setStartOnBootEnabled(false)
+        }
+    }
+
+    fun setStartOnBootEnabled(enabled: Boolean) {
+        val allow = state.getPersistentNetworkEnabledValue()
+        val actual = enabled && allow
+        state.setStartOnBootEnabled(actual)
+        dataManager.setStartOnBootEnabled(actual)
+    }
+
+    fun isPersistentNetworkEnabled(): Boolean = state.getPersistentNetworkEnabledValue()
     
     fun setCurrentPrivateChatPeer(peerID: String?) {
         // Update notification manager with current private chat peer

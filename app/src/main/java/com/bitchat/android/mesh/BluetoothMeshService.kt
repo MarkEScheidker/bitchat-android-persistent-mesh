@@ -53,6 +53,7 @@ class BluetoothMeshService(private val context: Context) {
     private val packetProcessor = PacketProcessor(myPeerID)
     
     // Service state management
+    @Volatile
     private var isActive = false
     
     // Delegate for message callbacks (maintains same interface)
@@ -66,6 +67,8 @@ class BluetoothMeshService(private val context: Context) {
         messageHandler.packetProcessor = packetProcessor
         startPeriodicDebugLogging()
     }
+
+    fun isRunning(): Boolean = isActive
     
     /**
      * Start periodic debug logging every 10 seconds
