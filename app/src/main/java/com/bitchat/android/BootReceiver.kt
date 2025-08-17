@@ -12,8 +12,7 @@ import com.bitchat.android.ui.DataManager
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED ||
-            intent?.action == Intent.ACTION_USER_UNLOCKED) {
+        if (intent?.action == Intent.ACTION_USER_UNLOCKED) {
             val dm = DataManager(context.applicationContext)
             if (dm.isPersistentNetworkEnabled() && dm.isStartOnBootEnabled()) {
                 val hasLocation =
@@ -47,14 +46,18 @@ class BootReceiver : BroadcastReceiver() {
                     )
                 }
 
-                Log.d("BootReceiver", "Starting MeshForegroundService on boot")
+                Log.d("BootReceiver", "Starting MeshForegroundService on user unlock")
                 val serviceIntent = Intent(context, MeshForegroundService::class.java).apply {
                     action = MeshForegroundService.ACTION_USE_BACKGROUND_DELEGATE
                 }
                 try {
                     ContextCompat.startForegroundService(context, serviceIntent)
                 } catch (e: Exception) {
-                    Log.w("BootReceiver", "Failed to start service on boot", e)
+                    Log.w(
+                        "BootReceiver",
+                        "Failed to start service on user unlock",
+                        e
+                    )
                 }
             }
         }
