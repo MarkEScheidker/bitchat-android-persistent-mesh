@@ -40,6 +40,9 @@ lz4-java = "1.8.0"
 # Security
 security-crypto = "1.1.0-beta01"
 
+# WorkManager
+work = "2.9.1"
+
 # Testing
 junit = "4.13.2"
 androidx-test-ext = "1.2.1"
@@ -90,6 +93,9 @@ lz4-java = { module = "org.lz4:lz4-java", version.ref = "lz4-java" }
 
 # Security
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "security-crypto" }
+
+# WorkManager
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 # Testing
 junit = { module = "junit:junit", version.ref = "junit" }

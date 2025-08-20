@@ -97,7 +97,10 @@ dependencies {
     
     // Security preferences
     implementation(libs.androidx.security.crypto)
-    
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Testing
     testImplementation(libs.bundles.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
