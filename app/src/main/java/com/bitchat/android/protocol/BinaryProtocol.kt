@@ -11,32 +11,11 @@ import android.util.Log
  */
 enum class MessageType(val value: UByte) {
     ANNOUNCE(0x01u),
-    // 0x02 was legacy keyExchange - removed
+    MESSAGE(0x02u),  // All user messages (private and broadcast)
     LEAVE(0x03u),
-    MESSAGE(0x04u),  // All user messages (private and broadcast)
-    FRAGMENT_START(0x05u),
-    FRAGMENT_CONTINUE(0x06u),
-    FRAGMENT_END(0x07u),
-    CHANNEL_ANNOUNCE(0x08u),  // Announce password-protected channel status
-    CHANNEL_RETENTION(0x09u),  // Announce channel retention status
-    DELIVERY_ACK(0x0Au),  // Acknowledge message received
-    DELIVERY_STATUS_REQUEST(0x0Bu),  // Request delivery status update
-    READ_RECEIPT(0x0Cu),  // Message has been read/viewed
-    
-    // Noise Protocol messages - exact same as iOS
-    NOISE_HANDSHAKE_INIT(0x10u),  // Noise handshake initiation
-    NOISE_HANDSHAKE_RESP(0x11u),  // Noise handshake response
-    NOISE_ENCRYPTED(0x12u),       // Noise encrypted transport message
-    NOISE_IDENTITY_ANNOUNCE(0x13u),  // Announce static public key for discovery
-    CHANNEL_KEY_VERIFY_REQUEST(0x14u),  // Request key verification for a channel
-    CHANNEL_KEY_VERIFY_RESPONSE(0x15u), // Response to key verification request
-    CHANNEL_PASSWORD_UPDATE(0x16u),     // Distribute new password to channel members
-    CHANNEL_METADATA(0x17u),            // Announce channel creator and metadata
-    HANDSHAKE_REQUEST(0x25u),            // Request handshake initiation for pending messages
-    
-    // Protocol version negotiation
-    VERSION_HELLO(0x20u),               // Initial version announcement
-    VERSION_ACK(0x21u);                 // Version acknowledgment
+    NOISE_HANDSHAKE(0x10u),  // Noise handshake
+    NOISE_ENCRYPTED(0x11u),  // Noise encrypted transport message
+    FRAGMENT(0x20u); // Fragmentation for large packets
 
     companion object {
         fun fromValue(value: UByte): MessageType? {
@@ -269,13 +248,24 @@ object BinaryProtocol {
     }
     
     fun decode(data: ByteArray): BitchatPacket? {
+        // Try decode as-is first (robust when padding wasn't applied) - iOS fix
+        decodeCore(data)?.let { return it }
+        
+        // If that fails, try after removing padding
+        val unpadded = MessagePadding.unpad(data)
+        if (unpadded.contentEquals(data)) return null // No padding was removed, already failed
+        
+        return decodeCore(unpadded)
+    }
+    
+    /**
+     * Core decoding implementation used by decode() with and without padding removal - iOS fix
+     */
+    private fun decodeCore(raw: ByteArray): BitchatPacket? {
         try {
-            // Remove padding first - exactly same as iOS
-            val unpaddedData = MessagePadding.unpad(data)
+            if (raw.size < HEADER_SIZE + SENDER_ID_SIZE) return null
             
-            if (unpaddedData.size < HEADER_SIZE + SENDER_ID_SIZE) return null
-            
-            val buffer = ByteBuffer.wrap(unpaddedData).apply { order(ByteOrder.BIG_ENDIAN) }
+            val buffer = ByteBuffer.wrap(raw).apply { order(ByteOrder.BIG_ENDIAN) }
             
             // Header
             val version = buffer.get().toUByte()
@@ -301,7 +291,7 @@ object BinaryProtocol {
             if (hasRecipient) expectedSize += RECIPIENT_ID_SIZE
             if (hasSignature) expectedSize += SIGNATURE_SIZE
             
-            if (unpaddedData.size < expectedSize) return null
+            if (raw.size < expectedSize) return null
             
             // SenderID
             val senderID = ByteArray(SENDER_ID_SIZE)
@@ -351,6 +341,7 @@ object BinaryProtocol {
             )
             
         } catch (e: Exception) {
+            Log.e("BinaryProtocol", "Error decoding packet: ${e.message}")
             return null
         }
     }
